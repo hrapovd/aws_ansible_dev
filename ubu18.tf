@@ -53,7 +53,7 @@ variable "setup_py" {
     #!/bin/bash
     apt update
     apt install -y python-virtualenv python-pip \
-        build-essential libssl-dev libffi-dev python-dev
+        build-essential libssl-dev libffi-dev python-dev nginx
     --//
   EOT
 }
@@ -71,15 +71,13 @@ resource "aws_instance" "ubu18" {
   }
   provisioner "remote-exec" {
     connection {
-      user = "ubuntu"
-      host = "${self.public_ip}"
-      private_key = "/home/d_khrapov/.ssh/id_rsa"
+      user        = "ubuntu"
+      host        = "${self.public_ip}"
+      private_key = "${file("/home/d_khrapov/.ssh/id_rsa")}"
+      timeout     = "2m"
     }
     inline = [
-      "git clone https://github.com/ansible/ansible.git",
-      "cd ansible && pip install virtualenv && virtualenv --prompt '(ansible)' venv",
-      ". /home/ubuntu/ansible/venv/bin/activate",
-      "pip install -r requirements.txt"
+      "git clone https://github.com/ansible/ansible.git"
     ]
   }
 }
