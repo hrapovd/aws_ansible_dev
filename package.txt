@@ -1,0 +1,3 @@
+apt update
+apt install python-virtualenv python-pip build-essential libssl-dev libffi-dev python-dev
+
