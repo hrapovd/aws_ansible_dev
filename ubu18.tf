@@ -29,6 +29,16 @@ resource "aws_security_group" "sg_ssh" {
   }
 }
 
+variable "ansible_user" {
+  type    = string
+  default = "ubuntu"
+}
+
+variable "private_key" {
+  type    = string
+  default = "$HOME/.ssh/id_rsa"
+}
+
 variable "setup_py" {
   type    = string
   default = <<-EOT
@@ -64,24 +74,26 @@ resource "aws_instance" "ubu18" {
   key_name                    = "dima_work"
   vpc_security_group_ids      = ["${aws_security_group.sg_ssh.id}"]
   associate_public_ip_address = true
-  user_data                   = var.setup_py
+  user_data                   = "${var.setup_py}"
   root_block_device {
     # device_name = "/dev/sda1"
     delete_on_termination = true
   }
-  provisioner "remote-exec" {
-    connection {
-      user        = "ubuntu"
-      host        = "${self.public_ip}"
-      private_key = "${file("/home/d_khrapov/.ssh/id_rsa")}"
-      timeout     = "2m"
-    }
-    inline = [
-      "git clone https://github.com/ansible/ansible.git"
-    ]
+  provisioner "local-exec" {
+    command = <<EOT
+      sleep 30;
+	  >invent1.yaml;
+	  echo "ubu18:" | tee -a invent1.yaml;
+	  echo "  hosts:" | tee -a invent1.yaml;
+	  echo "    ${self.public_ip}:" | tee -a invent1.yaml;
+          echo "      ansible_user: ${var.ansible_user}" | tee -a invent1.yaml;
+          echo "      ansible_ssh_private_key_file: ${var.private_key}" | tee -a invent1.yaml;
+      export ANSIBLE_HOST_KEY_CHECKING=False;
+	  ansible-playbook -u ${var.ansible_user} --private-key ${var.private_key} -i invent1.yaml playbooks/install_ansible.yaml
+    EOT
   }
 }
 
 output "public-ip" {
-  value = aws_instance.ubu18.public_ip
+  value = "${aws_instance.ubu18.public_ip}"
 }
