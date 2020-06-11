@@ -1,0 +1,46 @@
+---
+- block:
+    - set_fact:
+        web_name: "{{ name_site }}"
+    
+    - name: 'Получение данных от сервера'
+      nginx_get_param:
+        server_name: "{{ web_name }}"
+      register: ng_out
+    
+    - set_fact:
+        ng_conf: "{{ ng_out.servers }}"
+
+    - name: 'Проверка наличия каталога www'
+      file:
+        path: '/var/www'
+        state: directory
+        mode: '775'
+
+    - name: 'Копирование заглушки 50х на сервер'
+      template:
+        src: "50x_cons.j2"
+        dest: "/var/www/50x_cons.html"
+        mode: o=r
+    
+    - name: 'Поиск существующей настройки ошибки 50х в конфигурации сайта'
+      shell: "if grep -qP 'error_page 50.' {{ item }}; then echo 'True'; else echo 'False';fi"
+      loop: "{{ ng_conf.conf_path }}"
+      register: handler_exist
+      changed_when: False
+
+    - name: 'Включение в конфигурацию nginx обработчика ошибки 50х'
+      blockinfile:
+        path: "{{ item }}"
+        insertbefore: '^\s*error_page\s+404.*$'
+        block: |
+                  error_page 500 502 503 504 /50x_cons.html;
+
+                  location /50x_cons.html {
+                        root  /var/www;
+                  }
+      loop: "{{ ng_conf.conf_path }}"
+      when: handler_exist.results.0.stdout == 'False'
+      notify:
+        - reload nginx
+  when:  site_name is defined

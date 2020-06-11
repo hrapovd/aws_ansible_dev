@@ -1,0 +1,6 @@
+---
+# handlers file for krista.set_stub_nginx
+- name: reload nginx
+  service:
+        name: nginx
+        state: reloaded
